@@ -25,9 +25,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "gtest/gtest.h"
 #include "test_utils.h"
 #include "utf8.h"
-#include "gtest/gtest.h"
 
 namespace {
 
@@ -42,7 +42,7 @@ class CharRefTest : public GumboTest {
     text_ = input;
     utf8iterator_init(&parser_, input, strlen(input), &iter_);
     bool result = consume_char_ref(
-        &parser_,  &iter_, additional_allowed_char, is_in_attribute, &output_);
+        &parser_, &iter_, additional_allowed_char, is_in_attribute, &output_);
     fflush(stdout);
     return result;
   }
@@ -135,7 +135,7 @@ TEST_F(CharRefTest, NamedReplacementInvalid) {
   EXPECT_EQ('&', utf8iterator_current(&iter_));
 }
 
-//TEST_F(CharRefTest, NamedReplacementInvalidNoSemicolon) {
+// TEST_F(CharRefTest, NamedReplacementInvalidNoSemicolon) {
 //  EXPECT_FALSE(ConsumeCharRef("&google"));
 //  EXPECT_EQ(kGumboNoChar, output_.first);
 //  EXPECT_EQ(kGumboNoChar, output_.second);

@@ -23,30 +23,31 @@
 
 #include "util.h"
 
-struct _GumboParser;
+struct GumboInternalParser;
 
-const GumboVector kGumboEmptyVector = { NULL, 0, 0 };
+const GumboVector kGumboEmptyVector = {NULL, 0, 0};
 
-void gumbo_vector_init(
-    struct _GumboParser* parser, size_t initial_capacity, GumboVector* vector) {
+void gumbo_vector_init(struct GumboInternalParser* parser,
+    size_t initial_capacity, GumboVector* vector) {
   vector->length = 0;
   vector->capacity = initial_capacity;
   if (initial_capacity > 0) {
-    vector->data = gumbo_parser_allocate(
-        parser, sizeof(void*) * initial_capacity);
+    vector->data =
+        gumbo_parser_allocate(parser, sizeof(void*) * initial_capacity);
   } else {
     vector->data = NULL;
   }
 }
 
-void gumbo_vector_destroy(struct _GumboParser* parser, GumboVector* vector) {
+void gumbo_vector_destroy(
+    struct GumboInternalParser* parser, GumboVector* vector) {
   if (vector->capacity > 0) {
     gumbo_parser_deallocate(parser, vector->data);
   }
 }
 
 static void enlarge_vector_if_full(
-    struct _GumboParser* parser, GumboVector* vector) {
+    struct GumboInternalParser* parser, GumboVector* vector) {
   if (vector->length >= vector->capacity) {
     if (vector->capacity) {
       size_t old_num_bytes = sizeof(void*) * vector->capacity;
@@ -59,29 +60,30 @@ static void enlarge_vector_if_full(
     } else {
       // 0-capacity vector; no previous array to deallocate.
       vector->capacity = 2;
-      vector->data = gumbo_parser_allocate(
-          parser, sizeof(void*) * vector->capacity);
+      vector->data =
+          gumbo_parser_allocate(parser, sizeof(void*) * vector->capacity);
     }
   }
 }
 
 void gumbo_vector_add(
-    struct _GumboParser* parser, void* element, GumboVector* vector) {
+    struct GumboInternalParser* parser, void* element, GumboVector* vector) {
   enlarge_vector_if_full(parser, vector);
   assert(vector->data);
   assert(vector->length < vector->capacity);
   vector->data[vector->length++] = element;
 }
 
-void* gumbo_vector_pop(struct _GumboParser* parser, GumboVector* vector) {
+void* gumbo_vector_pop(
+    struct GumboInternalParser* parser, GumboVector* vector) {
   if (vector->length == 0) {
     return NULL;
   }
   return vector->data[--vector->length];
 }
 
-int gumbo_vector_index_of(GumboVector* vector, void* element) {
-  for (int i = 0; i < vector->length; ++i) {
+int gumbo_vector_index_of(GumboVector* vector, const void* element) {
+  for (unsigned int i = 0; i < vector->length; ++i) {
     if (vector->data[i] == element) {
       return i;
     }
@@ -89,19 +91,19 @@ int gumbo_vector_index_of(GumboVector* vector, void* element) {
   return -1;
 }
 
-void gumbo_vector_insert_at(
-    struct _GumboParser* parser, void* element, int index, GumboVector* vector) {
+void gumbo_vector_insert_at(struct GumboInternalParser* parser, void* element,
+    unsigned int index, GumboVector* vector) {
   assert(index >= 0);
   assert(index <= vector->length);
   enlarge_vector_if_full(parser, vector);
   ++vector->length;
   memmove(&vector->data[index + 1], &vector->data[index],
-          sizeof(void*) * (vector->length - index - 1));
+      sizeof(void*) * (vector->length - index - 1));
   vector->data[index] = element;
 }
 
 void gumbo_vector_remove(
-    struct _GumboParser* parser, void* node, GumboVector* vector) {
+    struct GumboInternalParser* parser, void* node, GumboVector* vector) {
   int index = gumbo_vector_index_of(vector, node);
   if (index == -1) {
     return;
@@ -109,13 +111,13 @@ void gumbo_vector_remove(
   gumbo_vector_remove_at(parser, index, vector);
 }
 
-void* gumbo_vector_remove_at(
-    struct _GumboParser* parser, int index, GumboVector* vector) {
+void* gumbo_vector_remove_at(struct GumboInternalParser* parser,
+    unsigned int index, GumboVector* vector) {
   assert(index >= 0);
   assert(index < vector->length);
   void* result = vector->data[index];
   memmove(&vector->data[index], &vector->data[index + 1],
-          sizeof(void*) * (vector->length - index - 1));
+      sizeof(void*) * (vector->length - index - 1));
   --vector->length;
   return result;
 }

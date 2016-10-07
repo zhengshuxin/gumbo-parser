@@ -22,35 +22,59 @@ Pythonic API.
 
 __author__ = 'jdtang@google.com (Jonathan Tang)'
 
+import sys
 import contextlib
 import ctypes
+import os.path
+import gumboc_tags
+
+_name_of_lib = 'libgumbo.so'
+if sys.platform.startswith('darwin'):
+  _name_of_lib = 'libgumbo.dylib'
+elif sys.platform.startswith('win'):
+  _name_of_lib = "gumbo.dll"
 
 try:
-  _dll = ctypes.cdll.LoadLibrary('libgumbo.so')
+  # First look for a freshly-built .so in the .libs directory, for development.
+  _dll = ctypes.cdll.LoadLibrary(os.path.join(
+      os.path.dirname(__file__), '..', '..', '.libs', _name_of_lib))
 except OSError:
-  # MacOS X
-  _dll = ctypes.cdll.LoadLibrary('libgumbo.dylib')
+  # PyPI or setuptools install, look in the current directory.
+  _dll = ctypes.cdll.LoadLibrary(os.path.join(
+      os.path.dirname(__file__), _name_of_lib))
+except OSError:
+  # System library, on unix or mac osx
+  _dll = ctypes.cdll.LoadLibrary(_name_of_lib)
 
 # Some aliases for common types.
 _bitvector = ctypes.c_uint
 _Ptr = ctypes.POINTER
 
-
-class Enum(ctypes.c_uint):
-  class __metaclass__(type(ctypes.c_uint)):
-    def __new__(metaclass, name, bases, cls_dict):
-      cls = type(ctypes.c_uint).__new__(metaclass, name, bases, cls_dict)
-      if name == 'Enum':
-        return cls
-      try:
-        for i, value in enumerate(cls_dict['_values_']):
-          setattr(cls, value, cls.from_param(i))
-      except KeyError:
-        raise ValueError('No _values_ list found inside enum type.')
-      except TypeError:
-        raise ValueError('_values_ must be a list of names of enum constants.')
+class EnumMetaclass(type(ctypes.c_uint)):
+  def __new__(metaclass, name, bases, cls_dict):
+    cls = type(ctypes.c_uint).__new__(metaclass, name, bases, cls_dict)
+    if name == 'Enum':
       return cls
+    try:
+      for i, value in enumerate(cls_dict['_values_']):
+        setattr(cls, value, cls.from_param(i))
+    except KeyError:
+      raise ValueError('No _values_ list found inside enum type.')
+    except TypeError:
+      raise ValueError('_values_ must be a list of names of enum constants.')
+    return cls
 
+def with_metaclass(mcls):
+    def decorator(cls):
+        body = vars(cls).copy()
+        # clean out class body
+        body.pop('__dict__', None)
+        body.pop('__weakref__', None)
+        return mcls(cls.__name__, cls.__bases__, body)
+    return decorator
+
+@with_metaclass(EnumMetaclass)
+class Enum(ctypes.c_uint):
   @classmethod
   def from_param(cls, param):
     if isinstance(param, Enum):
@@ -144,18 +168,30 @@ class Vector(ctypes.Structure):
     def __iter__(self):
       return self
 
-    def next(self):
+    def __next__(self):
+      # Python 3
       if self.current >= self.vector.length:
         raise StopIteration
       obj = self.vector[self.current]
       self.current += 1
       return obj
 
+    def next(self):
+      # Python 2
+      return self.__next__()
+
   def __len__(self):
     return self.length
 
   def __getitem__(self, i):
-    if isinstance(i, (int, long)):
+    try:
+      # Python 2
+      numeric_types = (int, long)
+    except NameError:
+      # Python 3
+      numeric_types = int
+
+    if isinstance(i, numeric_types):
       if i < 0:
         i += self.length
       if i > self.length:
@@ -211,156 +247,12 @@ class Namespace(Enum):
 
 
 class Tag(Enum):
-  _values_ = [
-      'HTML',
-      'HEAD',
-      'TITLE',
-      'BASE',
-      'LINK',
-      'META',
-      'STYLE',
-      'SCRIPT',
-      'NOSCRIPT',
-      'BODY',
-      'SECTION',
-      'NAV',
-      'ARTICLE',
-      'ASIDE',
-      'H1',
-      'H2',
-      'H3',
-      'H4',
-      'H5',
-      'H6',
-      'HGROUP',
-      'HEADER',
-      'FOOTER',
-      'ADDRESS',
-      'P',
-      'HR',
-      'PRE',
-      'BLOCKQUOTE',
-      'OL',
-      'UL',
-      'LI',
-      'DL',
-      'DT',
-      'DD',
-      'FIGURE',
-      'FIGCAPTION',
-      'DIV',
-      'A',
-      'EM',
-      'STRONG',
-      'SMALL',
-      'S',
-      'CITE',
-      'Q',
-      'DFN',
-      'ABBR',
-      'TIME',
-      'CODE',
-      'VAR',
-      'SAMP',
-      'KBD',
-      'SUB',
-      'SUP',
-      'I',
-      'B',
-      'MARK',
-      'RUBY',
-      'RT',
-      'RP',
-      'BDI',
-      'BDO',
-      'SPAN',
-      'BR',
-      'WBR',
-      'INS',
-      'DEL',
-      'IMAGE',
-      'IMG',
-      'IFRAME',
-      'EMBED',
-      'OBJECT',
-      'PARAM',
-      'VIDEO',
-      'AUDIO',
-      'SOURCE',
-      'TRACK',
-      'CANVAS',
-      'MAP',
-      'AREA',
-      'MATH',
-      'MI',
-      'MO',
-      'MN',
-      'MS',
-      'MTEXT',
-      'MGLYPH',
-      'MALIGNMARK',
-      'ANNOTATION_XML',
-      'SVG',
-      'FOREIGNOBJECT',
-      'DESC',
-      'TABLE',
-      'CAPTION',
-      'COLGROUP',
-      'COL',
-      'TBODY',
-      'THEAD',
-      'TFOOT',
-      'TR',
-      'TD',
-      'TH',
-      'FORM',
-      'FIELDSET',
-      'LEGEND',
-      'LABEL',
-      'INPUT',
-      'BUTTON',
-      'SELECT',
-      'DATALIST',
-      'OPTGROUP',
-      'OPTION',
-      'TEXTAREA',
-      'KEYGEN',
-      'OUTPUT',
-      'PROGRESS',
-      'METER',
-      'DETAILS',
-      'SUMMARY',
-      'COMMAND',
-      'MENU',
-      'APPLET',
-      'ACRONYM',
-      'BGSOUND',
-      'DIR',
-      'FRAME',
-      'FRAMESET',
-      'NOFRAMES',
-      'ISINDEX',
-      'LISTING',
-      'XMP',
-      'NEXTID',
-      'NOEMBED',
-      'PLAINTEXT',
-      'RB',
-      'STRIKE',
-      'BASEFONT',
-      'BIG',
-      'BLINK',
-      'CENTER',
-      'FONT',
-      'MARQUEE',
-      'MULTICOL',
-      'NOBR',
-      'SPACER',
-      'TT',
-      'U',
-      'UNKNOWN',
-      ]
+  @staticmethod
+  def from_str(tagname):
+    text_ptr = ctypes.c_char_p(tagname.encode('utf-8'))
+    return _tag_enum(text_ptr)
 
+  _values_ = gumboc_tags.TagNames + ['UNKNOWN', 'LAST']
 
 class Element(ctypes.Structure):
   _fields_ = [
@@ -406,7 +298,8 @@ class Text(ctypes.Structure):
 
 
 class NodeType(Enum):
-  _values_ = ['DOCUMENT', 'ELEMENT', 'TEXT', 'CDATA', 'COMMENT', 'WHITESPACE']
+  _values_ = ['DOCUMENT', 'ELEMENT', 'TEXT', 'CDATA',
+              'COMMENT', 'WHITESPACE', 'TEMPLATE']
 
 
 class NodeUnion(ctypes.Union):
@@ -420,20 +313,25 @@ class NodeUnion(ctypes.Union):
 class Node(ctypes.Structure):
   # _fields_ set later to avoid a circular reference
 
-  @property
-  def contents(self):
+  def _contents(self):
+    # Python3 enters an infinite loop if you use an @property within
+    # __getattr__, so we factor it out to a helper.
     if self.type == NodeType.DOCUMENT:
       return self.v.document
-    elif self.type == NodeType.ELEMENT:
+    elif self.type in (NodeType.ELEMENT, NodeType.TEMPLATE):
       return self.v.element
     else:
       return self.v.text
 
+  @property
+  def contents(self):
+    return self._contents()
+
   def __getattr__(self, name):
-    return getattr(self.contents, name)
+    return getattr(self._contents(), name)
 
   def __setattr__(self, name, value):
-    return setattr(self.contents, name, value)
+    return setattr(self._contents(), name, value)
 
   def __repr__(self):
     return repr(self.contents)
@@ -457,13 +355,12 @@ class Options(ctypes.Structure):
       # function.  Right now these are treated as opaque void pointers.
       ('allocator', ctypes.c_void_p),
       ('deallocator', ctypes.c_void_p),
+      ('userdata', ctypes.c_void_p),
       ('tab_stop', ctypes.c_int),
       ('stop_on_first_error', ctypes.c_bool),
-      ('max_utf8_decode_errors', ctypes.c_int),
-      # The following two options will likely be removed from the C API, and
-      # should be removed from the Python API when that happens too.
-      ('verbatim_mode', ctypes.c_bool),
-      ('preserve_entities', ctypes.c_bool),
+      ('max_errors', ctypes.c_int),
+      ('fragment_context', Tag),
+      ('fragment_namespace', Namespace),
       ]
 
 
@@ -474,7 +371,6 @@ class Output(ctypes.Structure):
       # TODO(jdtang): Error type.
       ('errors', Vector),
       ]
-
 
 @contextlib.contextmanager
 def parse(text, **kwargs):
@@ -488,7 +384,7 @@ def parse(text, **kwargs):
   # outlives the parse output.  If we let ctypes do it automatically on function
   # call, it creates a temporary buffer which is destroyed when the call
   # completes, and then the original_text pointers point into invalid memory.
-  text_ptr = ctypes.c_char_p(text)
+  text_ptr = ctypes.c_char_p(text.encode('utf-8'))
   output = _parse_with_options(ctypes.byref(options), text_ptr, len(text))
   try:
     yield output
@@ -516,6 +412,10 @@ _destroy_output.restype = None
 _tagname = _dll.gumbo_normalized_tagname
 _tagname.argtypes = [Tag]
 _tagname.restype = ctypes.c_char_p
+
+_tag_enum = _dll.gumbo_tag_enum
+_tag_enum.argtypes = [ctypes.c_char_p]
+_tag_enum.restype = Tag
 
 __all__ = ['StringPiece', 'SourcePosition', 'AttributeNamespace', 'Attribute',
            'Vector', 'AttributeVector', 'NodeVector', 'QuirksMode', 'Document',

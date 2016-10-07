@@ -20,20 +20,16 @@
 #include <string.h>
 
 #include "gtest/gtest.h"
-#include "vector.h"
 #include "test_utils.h"
+#include "vector.h"
 
 namespace {
 
 class GumboAttributeTest : public GumboTest {
  protected:
-  GumboAttributeTest() {
-    gumbo_vector_init(&parser_, 2, &vector_);
-  }
+  GumboAttributeTest() { gumbo_vector_init(&parser_, 2, &vector_); }
 
-  ~GumboAttributeTest() {
-    gumbo_vector_destroy(&parser_, &vector_);
-  }
+  ~GumboAttributeTest() { gumbo_vector_destroy(&parser_, &vector_); }
 
   GumboVector vector_;
 };

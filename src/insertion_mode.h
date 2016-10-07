@@ -22,7 +22,9 @@ extern "C" {
 #endif
 
 // http://www.whatwg.org/specs/web-apps/current-work/complete/parsing.html#insertion-mode
-typedef enum _GumboInsertionMode {
+// If new enum values are added, be sure to update the kTokenHandlers dispatch
+// table in parser.c.
+typedef enum {
   GUMBO_INSERTION_MODE_INITIAL,
   GUMBO_INSERTION_MODE_BEFORE_HTML,
   GUMBO_INSERTION_MODE_BEFORE_HEAD,
@@ -40,6 +42,7 @@ typedef enum _GumboInsertionMode {
   GUMBO_INSERTION_MODE_IN_CELL,
   GUMBO_INSERTION_MODE_IN_SELECT,
   GUMBO_INSERTION_MODE_IN_SELECT_IN_TABLE,
+  GUMBO_INSERTION_MODE_IN_TEMPLATE,
   GUMBO_INSERTION_MODE_AFTER_BODY,
   GUMBO_INSERTION_MODE_IN_FRAMESET,
   GUMBO_INSERTION_MODE_AFTER_FRAMESET,
